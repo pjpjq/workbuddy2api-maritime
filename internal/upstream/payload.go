@@ -28,6 +28,7 @@ func PrepareBodyOptWithEfforts(src []byte, sanitize bool, efforts map[string][]s
 	obj["stream"] = true
 	normalizeToolChoice(obj)
 	normalizeRoles(obj)
+	ensureLeadingSystem(obj)
 	normalizeReasoningEffort(obj, efforts)
 	if sanitize {
 		if msgs, ok := obj["messages"].([]any); ok {
@@ -188,4 +189,21 @@ func normalizeToolChoice(obj map[string]any) {
 	default:
 		delete(obj, "tool_choice")
 	}
+}
+
+// ensureLeadingSystem 保证首条消息为 system 角色，满足 WorkBuddy Global 防 11128 拦截。
+func ensureLeadingSystem(obj map[string]any) {
+	msgs, ok := obj["messages"].([]any)
+	if !ok || len(msgs) == 0 {
+		return
+	}
+	first, ok := msgs[0].(map[string]any)
+	if ok {
+		role, _ := first["role"].(string)
+		if strings.EqualFold(strings.TrimSpace(role), "system") {
+			return
+		}
+	}
+	placeholder := map[string]any{"role": "system", "content": "You are a helpful assistant."}
+	obj["messages"] = append([]any{placeholder}, msgs...)
 }

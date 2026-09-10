@@ -161,6 +161,9 @@ func (c *Client) chatHTTP() *http.Client {
 }
 
 func (c *Client) chatBase(a *auth.Auth) string {
+	if a != nil && a.IsGlobal() {
+		return "https://www.workbuddy.ai"
+	}
 	return c.ChatBaseCN
 }
 
@@ -184,6 +187,9 @@ func (c *Client) effortsSnapshot() map[string][]string {
 }
 
 func (c *Client) billingBase(a *auth.Auth) string {
+	if a != nil && a.IsGlobal() {
+		return "https://www.workbuddy.ai"
+	}
 	return c.BillingBaseCN
 }
 
@@ -299,7 +305,11 @@ type ModelInfo struct {
 // FetchModels 调上游动态模型接口。
 // 字段名与上游实际返回对齐：maxInputTokens（非 contextWindow）、maxOutputTokens（非 maxTokens）。
 func (c *Client) FetchModels(a *auth.Auth) ([]ModelInfo, error) {
-	url := c.chatBase(a) + "/console/enterprises/personal/models"
+	catalogPath := "/console/enterprises/personal/models"
+	if a != nil && a.IsGlobal() {
+		catalogPath = "/v2/enterprises/personal/models"
+	}
+	url := c.chatBase(a) + catalogPath
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

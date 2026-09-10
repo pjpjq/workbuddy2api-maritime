@@ -28,7 +28,8 @@ echo "  WorkBuddy OAuth 登录"
 echo "============================================================"
 echo ""
 
-AUTH_URL=$("$LOGIN_BIN" url)
+REGION="${1:-global}"
+AUTH_URL=$("$LOGIN_BIN" url "$REGION")
 
 echo "请在浏览器中打开以下链接完成登录："
 echo ""
@@ -78,13 +79,18 @@ EXPIRES_AT=$(( $(date +%s) + EXPIRES_IN ))
 python3 - <<PYEOF
 import json, urllib.request, urllib.error
 
+domain_str = "$DOMAIN".lower()
+checkin_base = "https://www.workbuddy.ai" if "workbuddy" in domain_str or domain_str == "" else "https://www.codebuddy.cn"
 req = urllib.request.Request(
-    "https://www.codebuddy.cn/v2/billing/meter/daily-checkin",
+    f"{checkin_base}/v2/billing/meter/daily-checkin",
     method="POST", data=b"{}",
     headers={
         "Authorization": "Bearer $TOKEN",
         "Accept": "application/json",
         "Content-Type": "application/json",
+        "Origin": checkin_base,
+        "Referer": f"{checkin_base}/",
+        "User-Agent": "CLI/2.139.0 CodeBuddy/2.139.0",
         "X-User-Id": "$USER_ID",
         **({"X-Enterprise-Id": "$ENT_ID", "X-Tenant-Id": "$ENT_ID"} if "$ENT_ID" else {}),
         **({"X-Domain": "$DOMAIN"} if "$DOMAIN" else {}),

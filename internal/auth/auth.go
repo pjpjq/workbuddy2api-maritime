@@ -41,6 +41,21 @@ func (a *Auth) NeedsRefresh(within time.Duration) bool {
 	return time.Now().Add(within).Unix() >= a.ExpiresAt
 }
 
+// IsGlobal 判定是否为 WorkBuddy 国际版 (workbuddy.ai)。
+func (a *Auth) IsGlobal() bool {
+	if a == nil {
+		return false
+	}
+	domain := strings.ToLower(strings.TrimSpace(a.Domain))
+	if domain == "" {
+		return false
+	}
+	if strings.Contains(domain, "codebuddy.cn") {
+		return false
+	}
+	return strings.Contains(domain, "workbuddy.ai") || strings.Contains(domain, "workbuddy") || strings.Contains(domain, "global")
+}
+
 // Parse 兼容两种磁盘形态：
 //
 //	嵌套形 {"auth":{...},"account":{...}}  （插件 OAuth 输出）
