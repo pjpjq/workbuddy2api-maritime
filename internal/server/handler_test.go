@@ -869,3 +869,22 @@ func TestStatusRequiresAuth(t *testing.T) {
 		t.Errorf("healthz: code=%d", rec.Code)
 	}
 }
+
+func TestMaritimeHealthAndChat(t *testing.T) {
+	h := NewHandler(Config{})
+	// GET /health
+	req := httptest.NewRequest("GET", "/health", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for /health, got %d", rec.Code)
+	}
+
+	// POST /chat
+	reqChat := httptest.NewRequest("POST", "/chat", strings.NewReader(`{"message":"hi"}`))
+	recChat := httptest.NewRecorder()
+	h.ServeHTTP(recChat, reqChat)
+	if recChat.Code != http.StatusOK {
+		t.Fatalf("expected 200 for /chat, got %d", recChat.Code)
+	}
+}

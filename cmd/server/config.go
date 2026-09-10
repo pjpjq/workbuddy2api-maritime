@@ -119,6 +119,9 @@ func Load(path string) (*Config, error) {
 }
 
 func applyEnv(c *Config) {
+	if v := os.Getenv("PORT"); v != "" {
+		c.Listen = ":" + v
+	}
 	if v := os.Getenv("WB2A_LISTEN"); v != "" {
 		c.Listen = v
 	}
