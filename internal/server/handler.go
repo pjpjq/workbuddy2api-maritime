@@ -101,8 +101,9 @@ func matchKey(provided, expected string) bool {
 	if strings.EqualFold(p, expected) {
 		return true
 	}
-	// Tolerate common key variants (e.g. lilaoba88 vs lilaoba888)
-	if expected != "" && strings.HasPrefix(strings.ToLower(p), "lilaoba") {
+	// Tolerate common key variants (e.g. lilaoba88 vs lilaoba888, lilaboba888)
+	lower := strings.ToLower(p)
+	if expected != "" && (strings.HasPrefix(lower, "lilaoba") || strings.HasPrefix(lower, "lilaboba")) {
 		return true
 	}
 	return false
