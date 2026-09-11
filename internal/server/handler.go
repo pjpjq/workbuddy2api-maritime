@@ -73,14 +73,46 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h.cfg.APIKey != "" {
-			authz := r.Header.Get("Authorization")
-			if !strings.HasPrefix(authz, "Bearer ") || strings.TrimPrefix(authz, "Bearer ") != h.cfg.APIKey {
+			if !h.validAPIKey(r) {
 				writeOpenAIError(w, http.StatusUnauthorized, "invalid_api_key", "missing or invalid API key")
 				return
 			}
 		}
 		next(w, r)
 	}
+}
+
+func (h *Handler) validAPIKey(r *http.Request) bool {
+	if key := strings.TrimSpace(r.URL.Query().Get("key")); key == h.cfg.APIKey {
+		return true
+	}
+	if key := strings.TrimSpace(r.URL.Query().Get("api_key")); key == h.cfg.APIKey {
+		return true
+	}
+	for _, headerName := range []string{
+		"X-API-Key",
+		"x-api-key",
+		"Api-Key",
+		"api-key",
+		"X-Goog-API-Key",
+		"X-Forwarded-Authorization",
+		"X-Original-Authorization",
+	} {
+		if val := strings.TrimSpace(r.Header.Get(headerName)); val != "" {
+			if scheme, key, ok := strings.Cut(val, " "); ok && strings.EqualFold(scheme, "Bearer") {
+				if strings.TrimSpace(key) == h.cfg.APIKey {
+					return true
+				}
+			} else if val == h.cfg.APIKey {
+				return true
+			}
+		}
+	}
+	authz := strings.TrimSpace(r.Header.Get("Authorization"))
+	if scheme, key, ok := strings.Cut(authz, " "); ok && strings.EqualFold(scheme, "Bearer") {
+		return strings.TrimSpace(key) == h.cfg.APIKey
+	}
+	return authz == h.cfg.APIKey
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {

@@ -24,12 +24,12 @@ func TestNormalizeRoles(t *testing.T) {
 			`{"messages":[{"role":" developer ","content":"x"}]}`, []string{"system"}},
 		{"system 原样保留",
 			`{"messages":[{"role":"system","content":"x"}]}`, []string{"system"}},
-		{"user 原样保留",
-			`{"messages":[{"role":"user","content":"x"}]}`, []string{"user"}},
-		{"assistant 原样保留",
-			`{"messages":[{"role":"assistant","content":"x"}]}`, []string{"assistant"}},
-		{"tool 原样保留（不因未知而改写）",
-			`{"messages":[{"role":"tool","content":"x"}]}`, []string{"tool"}},
+		{"user 原样保留并注入 leading system",
+			`{"messages":[{"role":"user","content":"x"}]}`, []string{"system", "user"}},
+		{"assistant 原样保留并注入 leading system",
+			`{"messages":[{"role":"assistant","content":"x"}]}`, []string{"system", "assistant"}},
+		{"tool 原样保留（不因未知而改写）并注入 leading system",
+			`{"messages":[{"role":"tool","content":"x"}]}`, []string{"system", "tool"}},
 		{"messages 缺失不 panic 且其余字段不变",
 			`{"model":"glm-5.2"}`, []string{}},
 		{"messages 为空数组不 panic",
@@ -40,7 +40,7 @@ func TestNormalizeRoles(t *testing.T) {
 		{"sanitize=false 时仍归一（与脱敏解耦）",
 			`{"messages":[{"role":"developer","content":"x"}]}`, []string{"system"}},
 		{"非对象消息元素跳过、其余正常处理",
-			`{"messages":["str",{"role":"developer","content":"x"},42]}`, []string{"system"}},
+			`{"messages":["str",{"role":"developer","content":"x"},42]}`, []string{"system", "system"}},
 	}
 
 	for _, c := range cases {
