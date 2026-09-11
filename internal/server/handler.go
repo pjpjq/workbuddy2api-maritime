@@ -88,8 +88,12 @@ func (h *Handler) withAuth(next http.HandlerFunc) http.HandlerFunc {
 
 func matchKey(provided, expected string) bool {
 	p := strings.TrimSpace(provided)
-	if scheme, key, ok := strings.Cut(p, " "); ok && strings.EqualFold(scheme, "Bearer") {
-		p = strings.TrimSpace(key)
+	for {
+		if scheme, rest, ok := strings.Cut(p, " "); ok && strings.EqualFold(scheme, "Bearer") {
+			p = strings.TrimSpace(rest)
+			continue
+		}
+		break
 	}
 	if p == expected {
 		return true
