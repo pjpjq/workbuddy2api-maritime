@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -126,23 +127,25 @@ func main() {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
-	// 后台自探活循环：每 20s 访问平台入口，重置闲置计时器，彻底防止 microVM Checkpoint 休眠
-	go func() {
-		client := &http.Client{Timeout: 5 * time.Second}
-		ticker := time.NewTicker(20 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				resp, err := client.Get("https://api.maritime.sh/a/f92645bb-598b-4d48-a0f9-47b048b542e5/healthz")
-				if err == nil {
-					_ = resp.Body.Close()
+	// 后台自探活循环：若配置了 WB2A_KEEPALIVE_URL，则定期访问重置闲置计时器
+	if keepaliveURL := strings.TrimSpace(os.Getenv("WB2A_KEEPALIVE_URL")); keepaliveURL != "" {
+		go func() {
+			client := &http.Client{Timeout: 5 * time.Second}
+			ticker := time.NewTicker(20 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					resp, err := client.Get(keepaliveURL)
+					if err == nil {
+						_ = resp.Body.Close()
+					}
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	log.Printf("workbuddy2api listening on %s (api_key=%v)", cfg.Listen, cfg.APIKey != "")
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

@@ -5,6 +5,13 @@ set -euo pipefail
 mkdir -p "${WB2A_AUTH_DIR:-/data/auths}"
 mkdir -p "$(dirname "${WB2A_STATE_FILE:-/data/state.json}")"
 
+# Populate auth credential from env var if provided and not present
+if [ -n "${WB2A_AUTH_B64:-}" ]; then
+    echo "$WB2A_AUTH_B64" | base64 -d > "${WB2A_AUTH_DIR:-/data/auths}/workbuddy-default.json"
+elif [ -n "${WB2A_AUTH_JSON:-}" ]; then
+    echo "$WB2A_AUTH_JSON" > "${WB2A_AUTH_DIR:-/data/auths}/workbuddy-default.json"
+fi
+
 # Copy default config if none exists in /data
 if [ ! -f /data/config.json ] && [ -f /app/config.example.json ]; then
     cp /app/config.example.json /data/config.json
@@ -13,7 +20,7 @@ if [ ! -f /data/config.json ] && [ -f /app/config.example.json ]; then
     sed -i 's|"state_file": "./data/state.json"|"state_file": "/data/state.json"|g' /data/config.json
 fi
 
-PORT="${PORT:-18789}"
+PORT="${PORT:-8080}"
 export WB2A_LISTEN="${WB2A_LISTEN:-0.0.0.0:${PORT}}"
 export WB2A_AUTH_DIR="${WB2A_AUTH_DIR:-/data/auths}"
 export WB2A_STATE_FILE="${WB2A_STATE_FILE:-/data/state.json}"

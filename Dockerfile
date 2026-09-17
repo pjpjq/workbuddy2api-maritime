@@ -12,7 +12,8 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/wb-credit ./cmd/cr
 
 FROM alpine:3.20
 RUN apk add --no-cache curl wget ca-certificates tzdata bash python3 jq \
- && mkdir -p /app /data/auths /data/state
+ && mkdir -p /app /data/auths /data/state \
+ && chmod -R 777 /data /app
 WORKDIR /app
 COPY --from=build /out/wb2api /app/wb2api
 COPY --from=build /out/wb-login /app/wb-login
@@ -28,13 +29,17 @@ RUN chmod +x /app/wb2api /app/wb-login /app/wb-signin /app/wb-credit /app/login.
  && ln -sfn /app/wb-login /app/login \
  && ln -sfn /app/wb-signin /app/signin_bin \
  && ln -sfn /app/wb-credit /app/credit \
- && ln -sfn /data/auths /app/auths
+ && ln -sfn /data/auths /app/auths \
+ && chmod -R 777 /data /app
 
 ENV WB2A_AUTH_DIR=/data/auths \
     WB2A_STATE_FILE=/data/state.json
 
+VOLUME ["/data"]
+
+EXPOSE 8080
 EXPOSE 18789
 HEALTHCHECK --interval=15s --timeout=5s --start-period=5s \
-  CMD wget -qO- http://127.0.0.1:${PORT:-18789}/health || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-8080}/health || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
