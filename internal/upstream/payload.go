@@ -30,6 +30,7 @@ func PrepareBodyOptWithEfforts(src []byte, sanitize bool, efforts map[string][]s
 	normalizeRoles(obj)
 	ensureLeadingSystem(obj)
 	normalizeReasoningEffort(obj, efforts)
+	normalizeMaxTokens(obj)
 	if sanitize {
 		if msgs, ok := obj["messages"].([]any); ok {
 			sanitizeMessages(msgs)
@@ -206,4 +207,26 @@ func ensureLeadingSystem(obj map[string]any) {
 	}
 	placeholder := map[string]any{"role": "system", "content": "You are a helpful assistant."}
 	obj["messages"] = append([]any{placeholder}, msgs...)
+}
+
+// normalizeMaxTokens 限制最小 max_tokens 不低于 16，避免上游模型报 integer_below_min_value 错误。
+func normalizeMaxTokens(obj map[string]any) {
+	for _, key := range []string{"max_tokens", "max_output_tokens", "max_completion_tokens"} {
+		if v, ok := obj[key]; ok {
+			switch n := v.(type) {
+			case float64:
+				if n > 0 && n < 16 {
+					obj[key] = 16
+				}
+			case int:
+				if n > 0 && n < 16 {
+					obj[key] = 16
+				}
+			case int64:
+				if n > 0 && n < 16 {
+					obj[key] = int64(16)
+				}
+			}
+		}
+	}
 }

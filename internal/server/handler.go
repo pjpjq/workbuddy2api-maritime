@@ -62,6 +62,23 @@ func NewHandler(cfg Config) *Handler {
 	h.mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 	})
+	h.mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":  "ok",
+			"service": "workbuddy2api",
+			"message": "WorkBuddy OpenAI-compatible API is running",
+			"endpoints": []string{
+				"/health",
+				"/status",
+				"/v1/models",
+				"/v1/chat/completions",
+			},
+		})
+	})
 	h.mux.HandleFunc("POST /chat", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"response": "workbuddy2api is running. Use OpenAI-compatible /v1 endpoints.",
